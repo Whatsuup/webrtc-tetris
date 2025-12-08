@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8">
+    <title>Tetris Controller</title>
+    <link rel="stylesheet" href="./css/peer.css">
+  </head>
+  <body>
+    <h2>Tetris Controller</h2>
+
+    <p>Peer-ID vom PC scannen oder eingeben:</p>
+    <input type="text" id="peerid" placeholder="Peer-ID">
+    <button id="connect">Verbinden</button>
+
+    <div id="status">Status: nicht verbunden</div>
+
+    <div id="controls">
+      <button data-cmd="left">⬅️ Links</button>
+      <button data-cmd="right">➡️ Rechts</button>
+      <button data-cmd="rotate">🔄 Drehen</button>
+      <button data-cmd="softDrop">⬇️ Drop</button>
+      <button data-cmd="hardDrop">⬇️⬇️ HardDrop</button>
+    </div>
+
+    <div id="log"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/peerjs@1.4.7/dist/peerjs.min.js"></script>
+    <script src="./js/peer.js" type="module"></script>
+  </body>
+</html>

@@ -1,0 +1,26 @@
+body {
+    font-family: sans-serif;
+    margin: 20px;
+}
+
+button {
+    font-size: 18px;
+    margin: 5px;
+    padding: 10px;
+}
+
+input {
+    font-size: 16px;
+    padding: 5px;
+    width: 200px;
+}
+
+#controls {
+    display: none;
+    margin-top: 10px;
+}
+
+#status {
+    margin-top: 10px;
+    font-weight: bold;
+}

@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Mobile Fernbedienung</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background: #121212;
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    min-height: 100vh;
+    margin: 0;
+    padding: 20px;
+    box-sizing: border-box;
+    touch-action: manipulation;
+  }
+
+  /* Anzeigebereich */
+  .display {
+    width: 100%;
+    max-width: 400px;
+    display: flex;
+    justify-content: space-around;
+    margin-bottom: 30px;
+    font-size: 1.2rem;
+  }
+
+  .display div {
+    background: #1e1e1e;
+    padding: 15px 20px;
+    border-radius: 10px;
+    text-align: center;
+    flex: 1;
+    margin: 0 5px;
+  }
+
+  /* Steuerung Buttons */
+  .controls {
+    display: grid;
+    grid-template-columns: repeat(3, 80px);
+    grid-gap: 15px;
+    justify-content: center;
+    align-items: center;
+  }
+
+  button {
+    font-size: 16px;
+    padding: 20px;
+    border: none;
+    border-radius: 12px;
+    background-color: #333;
+    color: #fff;
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    transition: background 0.2s;
+  }
+
+  button:active {
+    background-color: #555;
+  }
+
+  /* Optional: unterschiedliche Farben für spezielle Buttons */
+  .rotate { background-color: #4CAF50; }
+  .fast { background-color: #f39c12; }
+
+  @media (max-width: 400px) {
+    .controls {
+      grid-template-columns: repeat(3, 60px);
+      grid-gap: 10px;
+    }
+
+    button {
+      padding: 15px;
+      font-size: 14px;
+    }
+
+    .display div {
+      padding: 10px;
+      font-size: 1rem;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="display">
+  <div>Score: 0</div>
+  <div>Level: 1</div>
+  <div>Lines: 0</div>
+</div>
+
+<div class="controls">
+  <div></div>
+  <button class="rotate">Rotieren</button>
+  <div></div>
+
+  <button>Links</button>
+  <button>Runter</button>
+  <button>Rechts</button>
+
+  <div></div>
+  <button class="fast">Schnell Runter</button>
+  <div></div>
+</div>
+
+</body>
+</html>
