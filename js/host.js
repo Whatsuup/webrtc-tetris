@@ -31,8 +31,7 @@ peer.on('open', id => {
         document.getElementById('qrcode').appendChild(img);
     });
     let url;
-    console.log(window.location.hostname);
-    if (window.location.port === null) {
+    if (window.location.port === '') {
         url = "https://" + domain + path;
     } else {
         // Only if run locally
