@@ -1,52 +1,199 @@
-const log = msg => document.getElementById('log').innerHTML += msg + '<br>';
+//
+// Alexander Albers
+// usvan@student.kit.edu
+//
 
-// URL-Parameter auslesen
+import Peer from "https://cdn.jsdelivr.net/npm/peerjs@1.4.7/+esm";
+
+// Helper functions for single / multiple element queries.
+const $ = (sel) => document.querySelector(sel);
+const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+
+// Cache relevant UI elements for status, manual connect and controller overlay.
+const statusEl = $("#status");
+const peerIdInput = $("#peerid");
+const connectBtn = $("#connect");
+const controllerEl = $("#controller");
+
+// Read optional target peer id from URL query (?id=<PeerID>) for auto-connect.
 const params = new URLSearchParams(window.location.search);
-const targetId = params.get('id'); // ?id=<PeerID>
+const targetId = params.get("id"); // ?id=<PeerID>
 
-let conn;
-const peer = new Peer();
+// PeerJS runtime state.
+let peer = null;
+let peerReady = false;
 
-peer.on('open', myId => {
-    log("✅ Controller Peer-ID: " + myId);
+// Connection state (to host peer).
+let conn = null;
+let connected = false;
 
-    if (targetId) {
-        // Auto-Verbindung über URL-ID
-        conn = peer.connect(targetId);
-        conn.on('open', () => {
-            document.getElementById('status').textContent = "✅ Verbunden mit " + targetId + "!";
-            document.getElementById('controls').style.display = "block";
-        });
-    } else {
-        // Fallback: manuelle Eingabe
-        document.getElementById("connect").onclick = () => {
-            const id = document.getElementById("peerid").value.trim();
-            if (!id) return alert("Bitte Peer-ID eingeben!");
-            conn = peer.connect(id);
-            conn.on('open', () => {
-                document.getElementById('status').textContent = "✅ Verbunden mit " + id + "!";
-                document.getElementById('controls').style.display = "block";
-            });
-        };
-    }
-});
+// Anti "ghost clicks" / double-trigger protection.
+// Some mobile browsers may send multiple events in quick succession.
+let lastSendAt = 0;
+const GHOST_MS = 250;
 
-// Buttons senden Befehle
-document.querySelectorAll("#controls button").forEach(btn => {
-    btn.onclick = () => {
-        if (conn && conn.open) conn.send(btn.dataset.cmd);
-        else alert("Nicht verbunden!");
-    };
-});
+// Update status text and visual state (on/off) in the UI.
+function setStatus(text, on = false) {
+    if (!statusEl) return;
+    statusEl.textContent = text;
+    statusEl.classList.toggle("status-on", on);
+    statusEl.classList.toggle("status-off", !on);
+}
 
-// Optional: Tastatursteuerung
-window.addEventListener('keydown', e => {
+// Toggle connected/disconnected UI and accessibility attributes.
+function setConnectedUI(on) {
+    connected = on;
+    document.body.classList.toggle("is-connected", on);
+    document.body.classList.toggle("is-disconnected", !on);
+
+    // Hide controller UI from screen readers when disconnected.
+    controllerEl?.setAttribute("aria-hidden", on ? "false" : "true");
+}
+
+// Send a command to the host via PeerJS data channel.
+// Also applies ghost-click throttling and haptic feedback on supported devices.
+function sendCmd(cmd) {
     if (!conn || !conn.open) return;
+
+    const now = Date.now();
+
+    // Throttle rapid repeat events to avoid unintended multiple sends.
+    if (now - lastSendAt < GHOST_MS) return;
+    lastSendAt = now;
+
+    conn.send(cmd);
+
+    // Small vibration as tactile feedback on mobile (if available).
+    if (navigator.vibrate) navigator.vibrate(8);
+}
+
+// Attach pointer handlers to controller buttons with data-cmd attribute.
+// Each button sends its mapped command (e.g. "left", "rotate", "restart") to the host.
+function wireControllerButtons() {
+    const cmdButtons = Array.from(controllerEl.querySelectorAll("[data-cmd]"));
+
+    cmdButtons.forEach((btn) => {
+        // Use pointerup to cover mouse/touch/pen with one handler.
+        btn.addEventListener("pointerup", (e) => {
+            e.preventDefault();
+            if (!connected) return;
+            sendCmd(btn.dataset.cmd);
+        });
+
+        // Prevent long-press context menu on mobile.
+        btn.addEventListener("contextmenu", (e) => e.preventDefault());
+
+        // Prevent double clicks even if only once pressed/clicked.
+        btn.addEventListener("click", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+        });
+    });
+}
+
+// Prevent double-tap zoom gestures on mobile browsers.
+// Does work most of the time...
+document.addEventListener("dblclick", (e) => e.preventDefault(), {
+    passive: false
+});
+document.addEventListener("gesturestart", (e) => e.preventDefault(), {
+    passive: false
+});
+
+// Initiate a connection to the host peer id.
+// This creates the data channel and wires basic lifecycle handlers (open/close/error).
+function connectTo(id) {
+    // PeerJS must be initialized and opened before connecting.
+    if (!peerReady || !peer) {
+        setStatus("Warte auf Peer…", false);
+        return;
+    }
+
+    setStatus("Verbinde…", false);
+
+    // Establish connection to host peer.
+    conn = peer.connect(id);
+
+    conn.on("open", () => {
+        setStatus("Verbunden", true);
+        setConnectedUI(true);
+    });
+
+    conn.on("close", () => {
+        setStatus("Verbindung getrennt", false);
+        setConnectedUI(false);
+    });
+
+    conn.on("error", (err) => {
+        console.error("conn error:", err);
+        setStatus("Verbindungsfehler", false);
+        setConnectedUI(false);
+    });
+}
+
+// Manual connect handler (button).
+// This is wired immediately, so the UI works even before peer.on("open") fires.
+function manualConnect(e) {
+    e?.preventDefault();
+    const id = peerIdInput?.value?.trim();
+    if (!id) return alert("Bitte Peer-ID eingeben!");
+    connectTo(id);
+}
+
+connectBtn?.addEventListener("pointerup", manualConnect);
+connectBtn?.addEventListener("click", manualConnect);
+
+// Setup controller input bindings.
+wireControllerButtons();
+
+// Create a new Peer using the peerjs lib.
+peer = new Peer();
+
+// PeerJS ready event.
+// Once open, we can accept manual connections and optionally auto-connect from the URL.
+peer.on("open", () => {
+    peerReady = true;
+    setStatus("Nicht verbunden", false);
+
+    // Auto-connect via ?id=... (e.g. from QR/link generated by the host).
+    if (targetId) connectTo(targetId);
+});
+
+peer.on("error", (err) => {
+    console.error("peer error:", err);
+    setStatus("Peer-Fehler (Konsole)", false);
+});
+
+// Additional feature for PC to PC use-cases.
+// Maps common keyboard keys to controller commands.
+window.addEventListener("keydown", (e) => {
+    if (!conn || !conn.open) return;
+
     switch (e.code) {
-        case 'ArrowLeft': conn.send('left'); break;
-        case 'ArrowRight': conn.send('right'); break;
-        case 'ArrowUp': conn.send('rotate'); break;
-        case 'ArrowDown': conn.send('softDrop'); break;
-        case 'Space': conn.send('hardDrop'); break;
+        case "ArrowLeft":
+            sendCmd("left");
+            break;
+        case "ArrowRight":
+            sendCmd("right");
+            break;
+        case "ArrowUp":
+            sendCmd("rotate");
+            break;
+        case "ArrowDown":
+            sendCmd("softDrop");
+            break;
+        case "Space":
+            sendCmd("hardDrop");
+            break;
+
+        case "KeyP":
+            sendCmd("pause");
+            break;
+        case "KeyR":
+            sendCmd("restart");
+            break;
+        case "KeyC":
+            sendCmd("resume");
+            break;
     }
 });
