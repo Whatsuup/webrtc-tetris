@@ -1,18 +1,44 @@
-// tetris.js – exakt wie in deiner Vorlage, als Modul
+//
+// Alexander Albers
+// usvan@student.kit.edu
+//
+
+// Tetris game logic and interaction module.
+// Exposes a small API for remote/controller input.
 export const TetrisAPI = {};
 
+//// Canvas + Grid Setup
+// Board dimensions and render scale.
 const COLS = 10, ROWS = 20, BLOCK = 24;
+
+// Main game canvas.
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
+
+// Set visual size and scale logical coordinates to block units.
 canvas.style.width = (COLS * BLOCK) + 'px';
 canvas.style.height = (ROWS * BLOCK) + 'px';
 ctx.scale(BLOCK, BLOCK);
 
-let board, cur, nextPiece, score = 0, level = 0, lines = 0;
-let dropInterval = 1000, lastDrop = 0;
-let gameOver = false, paused = false;
+//// Runtime States
+// Board grid, current piece, next piece, and stats.
+let board, cur, nextPiece;
+let score = 0, level = 0, lines = 0;
 
-// Pieces (wie in Vorlage)
+// Drop timing (ms between automatic drops).
+let dropInterval = 1000;
+let lastDrop = 0;
+
+// Global game flags.
+let gameOver = false;
+let paused = false;
+let started = false;
+
+// requestAnimationFrame handle.
+let rafId = null;
+
+//// Piece Definition
+// Tetromino definitions (color + block offsets).
 const pieces = {
     I: { color: '#00e5ff', blocks: [[0, 1], [1, 1], [2, 1], [3, 1]] },
     J: { color: '#0055ff', blocks: [[0, 0], [0, 1], [1, 1], [2, 1]] },
@@ -22,175 +48,461 @@ const pieces = {
     T: { color: '#b26cff', blocks: [[1, 0], [0, 1], [1, 1], [2, 1]] },
     Z: { color: '#ff3366', blocks: [[0, 0], [1, 0], [1, 1], [2, 1]] },
 };
+
+// 7-bag system source (each piece appears once per bag).
 const bag = ['I', 'J', 'L', 'O', 'S', 'T', 'Z'];
 
-function emptyBoard() { return Array.from({ length: ROWS }, () => Array(COLS).fill(null)); }
-function clone(o) { return JSON.parse(JSON.stringify(o)); }
+//// Board
+// Create an empty board filled with null cells.
+function emptyBoard() {
+    return Array.from({ length: ROWS }, () => Array(COLS).fill(null));
+}
 
+// Deep clone helper (used for external state export).
+function clone(o) {
+    return JSON.parse(JSON.stringify(o));
+}
+
+//// Piece Geometry
+// Convert block offsets into a 2D matrix.
 function pieceToMatrix(cells) {
     let maxX = 0, maxY = 0;
-    for (const [x, y] of cells) { if (x > maxX) maxX = x; if (y > maxY) maxY = y; }
-    const m = Array.from({ length: maxY + 1 }, () => Array(maxX + 1).fill(0));
+
+    // Find bounding box.
+    for (const [x, y] of cells) {
+        if (x > maxX) maxX = x;
+        if (y > maxY) maxY = y;
+    }
+
+    // Create minimal bounding matrix.
+    const m = Array.from(
+        { length: maxY + 1 },
+        () => Array(maxX + 1).fill(0)
+    );
+
     cells.forEach(([x, y]) => m[y][x] = 1);
     return m;
 }
 
+// Rotate a matrix clockwise (90°).
 function rotateMatrix(m) {
     const h = m.length, w = m[0].length;
+
     const r = Array.from({ length: w }, () => Array(h).fill(0));
-    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) r[x][h - 1 - y] = m[y][x];
+
+    for (let y = 0; y < h; y++)
+        for (let x = 0; x < w; x++)
+            r[x][h - 1 - y] = m[y][x];
+
     return r;
 }
 
+//// Random Piece Generator
+// bag randomizer (prevents long droughts).
 function randomPiece() {
     if (!randomPiece._bag || randomPiece._bag.length === 0) {
+
+        // Refill and shuffle bag.
         randomPiece._bag = bag.slice();
+
         for (let i = randomPiece._bag.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
-            [randomPiece._bag[i], randomPiece._bag[j]] = [randomPiece._bag[j], randomPiece._bag[i]];
+            [randomPiece._bag[i], randomPiece._bag[j]] =
+                [randomPiece._bag[j], randomPiece._bag[i]];
         }
     }
+
     return randomPiece._bag.pop();
 }
 
-function getTopOffset(shape) { for (let y = 0; y < shape.length; y++) if (shape[y].some(v => v)) return y; return 0; }
+//// Collision
+// Find first occupied row (used for spawn offset).
+function getTopOffset(shape) {
+    for (let y = 0; y < shape.length; y++)
+        if (shape[y].some(v => v)) return y;
 
+    return 0;
+}
+
+// Check if a shape collides at board position (x,y).
 function collides(shape, x, y) {
+
     for (let sy = 0; sy < shape.length; sy++) {
         for (let sx = 0; sx < shape[0].length; sx++) {
+
             if (!shape[sy][sx]) continue;
-            const bx = x + sx, by = y + sy;
+
+            const bx = x + sx;
+            const by = y + sy;
+
+            // Outside board.
             if (bx < 0 || bx >= COLS || by >= ROWS) return true;
+
+            // Hits existing block.
             if (by >= 0 && board[by][bx]) return true;
         }
     }
+
     return false;
 }
 
+//// Pieces
+// Spawn a new active piece at the top.
 function spawnPiece() {
+
     if (!nextPiece) nextPiece = randomPiece();
+
     const type = nextPiece;
     nextPiece = randomPiece();
+
     const shape = pieceToMatrix(pieces[type].blocks);
+
+    // Center horizontally.
     const x = Math.floor((COLS - shape[0].length) / 2);
+
+    // Start slightly above visible area.
     const y = -getTopOffset(shape);
-    cur = { type, shape, x, y, color: pieces[type].color };
+
+    cur = {
+        type,
+        shape,
+        x,
+        y,
+        color: pieces[type].color
+    };
+
+    // Immediate collision means game over.
     if (collides(cur.shape, cur.x, cur.y)) gameOver = true;
 }
 
+// Merge active piece into board.
 function lockPiece() {
+
     const s = cur.shape;
+
     for (let y = 0; y < s.length; y++) {
         for (let x = 0; x < s[0].length; x++) {
-            if (s[y][x]) {
-                const bx = cur.x + x, by = cur.y + y;
-                if (by >= 0 && by < ROWS && bx >= 0 && bx < COLS) board[by][bx] = { type: cur.type, color: cur.color };
+
+            if (!s[y][x]) continue;
+
+            const bx = cur.x + x;
+            const by = cur.y + y;
+
+            if (by >= 0 && by < ROWS && bx >= 0 && bx < COLS) {
+                board[by][bx] = {
+                    type: cur.type,
+                    color: cur.color
+                };
             }
         }
     }
+
     clearLines();
     spawnPiece();
 }
 
+//// Score System
+// Remove full rows and update score/level.
 function clearLines() {
+
     let removed = 0;
+
     for (let y = ROWS - 1; y >= 0; y--) {
-        if (board[y].every(c => c)) { board.splice(y, 1); board.unshift(Array(COLS).fill(null)); removed++; y++; }
+
+        if (board[y].every(c => c)) {
+
+            board.splice(y, 1);
+            board.unshift(Array(COLS).fill(null));
+
+            removed++;
+            y++;
+        }
     }
+
     if (removed > 0) {
         lines += removed;
-        score += (removed === 1 ? 100 : removed === 2 ? 300 : removed === 3 ? 500 : 800) * (level + 1);
+
+        // Classic Tetris scoring.
+        score += (
+            removed === 1 ? 100 :
+                removed === 2 ? 300 :
+                    removed === 3 ? 500 : 800
+        ) * (level + 1);
+
         level = Math.floor(lines / 10);
+
+        // Increase speed with level.
         dropInterval = Math.max(100, 1000 - level * 100);
+
         updateHUD();
     }
 }
 
-function move(dx) { if (!cur || gameOver || paused) return; const nx = cur.x + dx; if (!collides(cur.shape, nx, cur.y)) cur.x = nx; }
+//// Player Actions
+// Horizontal movement.
+function move(dx) {
+    if (!cur || gameOver || paused) return;
+
+    const nx = cur.x + dx;
+
+    if (!collides(cur.shape, nx, cur.y))
+        cur.x = nx;
+}
+
+// Rotation with simple wall-kick offsets.
 function rotate() {
     if (!cur || gameOver || paused) return;
+
     const rotated = rotateMatrix(cur.shape);
     const kicks = [0, -1, 1, -2, 2];
+
     for (const k of kicks) {
         if (!collides(rotated, cur.x + k, cur.y)) {
             cur.shape = rotated;
             cur.x += k;
-            // **cur.color bleibt unverändert**
             return;
         }
     }
 }
-function softDrop() { if (!cur || gameOver || paused) return; if (!collides(cur.shape, cur.x, cur.y + 1)) { cur.y++; score += 1; } else { lockPiece(); } }
+
+// Soft drop (manual down).
+function softDrop() {
+    if (!cur || gameOver || paused) return;
+
+    if (!collides(cur.shape, cur.x, cur.y + 1)) {
+        cur.y++;
+        score += 1;
+    } else {
+        lockPiece();
+    }
+}
+
+// Hard drop (instant drop).
 function hardDrop() {
     if (!cur || gameOver || paused) return;
+
     while (!collides(cur.shape, cur.x, cur.y + 1)) {
         cur.y++;
         score += 2;
     }
+
     lockPiece();
     updateHUD();
 }
 
+//// HUD
+// Update score/level/lines in DOM.
 function updateHUD() {
     document.getElementById('score').textContent = score;
     document.getElementById('level').textContent = level;
     document.getElementById('lines').textContent = lines;
 }
 
+//// Rendering
+// Draw one block with simple highlight shading.
 function drawCell(x, y, color) {
+
     ctx.fillStyle = color;
     ctx.fillRect(x + 0.03, y + 0.03, 0.94, 0.94);
+
+    // Top highlight.
     ctx.fillStyle = hexShade(color, -0.18);
     ctx.fillRect(x + 0.03, y + 0.03, 0.94, 0.2);
 }
-function hexShade(hex, percent) { const num = parseInt(hex.slice(1), 16); const r = Math.min(255, Math.max(0, Math.floor(((num >> 16) & 255) * (1 + percent)))); const g = Math.min(255, Math.max(0, Math.floor(((num >> 8) & 255) * (1 + percent)))); const b = Math.min(255, Math.max(0, Math.floor(((num) & 255) * (1 + percent)))); return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1); }
 
+// Lighten/darken hex color by percentage.
+function hexShade(hex, percent) {
+
+    const num = parseInt(hex.slice(1), 16);
+
+    const r = Math.min(255, Math.max(0, Math.floor(((num >> 16) & 255) * (1 + percent))));
+    const g = Math.min(255, Math.max(0, Math.floor(((num >> 8) & 255) * (1 + percent))));
+    const b = Math.min(255, Math.max(0, Math.floor((num & 255) * (1 + percent))));
+
+    return '#' + ((1 << 24) + (r << 16) + (g << 8) + b)
+        .toString(16)
+        .slice(1);
+}
+
+// Render board and active piece.
 function render() {
+
     ctx.clearRect(0, 0, COLS, ROWS);
+
+    // Draw background grid + locked blocks.
     for (let y = 0; y < ROWS; y++) {
         for (let x = 0; x < COLS; x++) {
-            ctx.fillStyle = '#0b0b0b'; ctx.fillRect(x, y, 1, 1);
-            ctx.strokeStyle = '#0f0f0f'; ctx.lineWidth = 0.03; ctx.strokeRect(x + 0.01, y + 0.01, 0.98, 0.98);
-            const c = board[y][x]; if (c) drawCell(x, y, c.color);
+
+            ctx.fillStyle = '#0b0b0b';
+            ctx.fillRect(x, y, 1, 1);
+
+            ctx.strokeStyle = '#0f0f0f';
+            ctx.lineWidth = 0.03;
+            ctx.strokeRect(x + 0.01, y + 0.01, 0.98, 0.98);
+
+            const c = board[y][x];
+            if (c) drawCell(x, y, c.color);
         }
     }
-    if (cur) { for (let y = 0; y < cur.shape.length; y++) { for (let x = 0; x < cur.shape[0].length; x++) { if (cur.shape[y][x]) { const bx = cur.x + x, by = cur.y + y; if (by >= 0) drawCell(bx, by, cur.color); } } } }
+
+    // Draw active piece.
+    if (cur) {
+        for (let y = 0; y < cur.shape.length; y++) {
+            for (let x = 0; x < cur.shape[0].length; x++) {
+
+                if (!cur.shape[y][x]) continue;
+
+                const bx = cur.x + x;
+                const by = cur.y + y;
+
+                if (by >= 0) drawCell(bx, by, cur.color);
+            }
+        }
+    }
 }
 
+//// Main game loop
+// requestAnimationFrame loop.
 function step(time) {
-    if (gameOver || paused) { render(); return; }
+
+    // Stop loop if game not started.
+    if (!started) {
+        render();
+        rafId = null;
+        return;
+    }
+
+    // Pause keeps rendering but stops logic.
+    if (paused) {
+        render();
+        rafId = requestAnimationFrame(step);
+        return;
+    }
+
+    // Stop loop on game over.
+    if (gameOver) {
+        render();
+        rafId = null;
+        return;
+    }
+
+    // Automated gravity.
     if (time - lastDrop > dropInterval) {
-        if (!collides(cur.shape, cur.x, cur.y + 1)) cur.y++;
-        else lockPiece();
+
+        if (!collides(cur.shape, cur.x, cur.y + 1))
+            cur.y++;
+        else
+            lockPiece();
+
         lastDrop = time;
     }
+
     render();
-    requestAnimationFrame(step);
+    rafId = requestAnimationFrame(step);
 }
 
+//// Game Control
+// Reset board and stats.
 function reset() {
-    board = emptyBoard(); score = 0; lines = 0; level = 0; dropInterval = 1000; lastDrop = 0;
-    gameOver = false; paused = false; nextPiece = randomPiece(); spawnPiece(); updateHUD();
+
+    board = emptyBoard();
+
+    score = 0;
+    lines = 0;
+    level = 0;
+
+    dropInterval = 1000;
+    lastDrop = performance.now();
+
+    gameOver = false;
+    paused = false;
+
+    nextPiece = randomPiece();
+
+    spawnPiece();
+    updateHUD();
 }
 
+// Start game once (ignore repeated calls).
+function start() {
+    if (started) return;
+
+    started = true;
+    reset();
+
+    if (rafId == null)
+        rafId = requestAnimationFrame(step);
+}
+
+// Restart game from beginning.
+function restart() {
+
+    started = true;
+    reset();
+
+    if (rafId == null)
+        rafId = requestAnimationFrame(step);
+}
+
+// Stop game loop and freeze state.
+function stop() {
+
+    started = false;
+    paused = false;
+
+    if (rafId != null)
+        cancelAnimationFrame(rafId);
+
+    rafId = null;
+
+    render();
+}
+
+
+// Initialisation / Start of a game instance
 reset();
-requestAnimationFrame(step);
+render();
 
-
-/* ---------- API für externe Steuerung ---------- */
+// API exposed to controller / network layer.
 window.TetrisAPI = {
+
     left: () => move(-1),
     right: () => move(1),
     rotate: () => rotate(),
     softDrop: () => softDrop(),
     hardDrop: () => hardDrop(),
+
     pause: () => { paused = true; },
-    resume: () => { paused = false; lastDrop = performance.now(); },
+    resume: () => {
+        paused = false;
+        lastDrop = performance.now();
+    },
     togglePause: () => { paused = !paused; },
+
+    start: () => start(),
+    restart: () => restart(),
+    stop: () => stop(),
+
     reset: () => { reset(); },
+
+    // Export minimal game states.
     getState: () => ({
-        score, level, lines,
+        started,
+        paused,
+        gameOver,
+        score,
+        level,
+        lines,
+
         board: clone(board),
-        current: cur ? { type: cur.type, x: cur.x, y: cur.y } : {}
+
+        current: cur ? {
+            type: cur.type,
+            x: cur.x,
+            y: cur.y
+        } : {}
     })
 };
+
+// Export and naming assignment
+Object.assign(TetrisAPI, window.TetrisAPI);
