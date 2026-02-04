@@ -1,21 +1,217 @@
+/*
+    Alexander Albers
+    usvan@student.kit.edu
+*/
+
+/* ---------- Theme ---------- */
+:root {
+    --bg0: #070910;
+    --bg1: #0a1223;
+
+    --panel: rgba(255, 255, 255, .06);
+    --panel2: rgba(0, 0, 0, .35);
+
+    --border: rgba(255, 255, 255, .14);
+    --text: rgba(255, 255, 255, .92);
+    --muted: rgba(255, 255, 255, .72);
+
+    --shadow: 0 18px 50px rgba(0, 0, 0, .55);
+    --radius: 18px;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html,
 body {
-    font-family: sans-serif;
-    margin: 20px;
+    height: 100%;
+    margin: 0;
+    color: var(--text);
+    font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Apple Color Emoji", "Segoe UI Emoji";
 }
 
-canvas {
-    border: 2px solid #333;
-    background: #111;
+body {
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    background: radial-gradient(1200px 600px at 20% 15%, rgba(122, 92, 255, .18), transparent 55%), radial-gradient(900px 500px at 85% 25%, rgba(0, 229, 255, .14), transparent 60%), radial-gradient(900px 600px at 50% 90%, rgba(255, 51, 102, .10), transparent 65%), linear-gradient(160deg, var(--bg0), var(--bg1));
 }
 
+body>h2,
+#qrcode,
+#log,
+#game,
+.hud {
+    width: min(520px, 92vw);
+}
+
+h2.title {
+    margin: 0 0 18px 0;
+    padding: 16px 20px;
+    text-align: center;
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    background: linear-gradient(135deg, rgba(122, 92, 255, .25), rgba(0, 229, 255, .18));
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    text-transform: uppercase;
+}
+
+/* ---------- Default states ---------- */
+#game,
+.hud {
+    display: none !important;
+}
+
+/* QR / Connect screen */
 #qrcode {
-    margin-top: 10px;
+    display: grid;
+    place-items: center;
+    padding: 18px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
 }
 
-#log {
-    border: 1px solid #ccc;
-    height: 150px;
+#qrcode img {
+    width: min(320px, 72vw);
+    height: auto;
+    image-rendering: pixelated;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, .9);
+    padding: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, .35);
+}
+
+#info {
+    margin-top: 12px;
+    padding: 14px 16px;
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+}
+
+#info::before {
+    display: block;
+    color: var(--text);
+    margin-bottom: 10px;
+}
+
+#info {
+    max-height: 160px;
     overflow: auto;
-    padding: 5px;
-    margin-top: 10px;
+}
+
+#info br {
+    line-height: 1.8;
+}
+
+/* ---------- Connected state ---------- */
+body.connected #qrcode,
+body.connected #info {
+    display: none;
+}
+
+body.connected #game,
+body.connected .hud {
+    display: block !important;
+}
+
+/* Game canvas card */
+#game {
+    margin-top: 12px;
+    background: rgba(0, 0, 0, .35);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    outline: 1px solid rgba(255, 255, 255, .06);
+}
+
+/* HUD */
+.hud {
+    margin-top: 12px;
+    padding: 12px 16px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    font-size: 14px;
+    color: var(--muted);
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    text-align: center;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: nowrap;
+}
+
+.hud .row {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+}
+
+.hud span {
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+    padding: 2px 8px;
+    background: rgba(255, 255, 255, .06);
+    border: 1px solid rgba(255, 255, 255, .10);
+    border-radius: 999px;
+}
+
+/* ---------- GAME OVER overlay ---------- */
+body.gameover::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, .62);
+    backdrop-filter: blur(3px);
+    z-index: 999;
+}
+
+body.gameover::after {
+    content: "GAME OVER";
+    position: fixed;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    padding: 18px 22px;
+    min-width: min(340px, 86vw);
+    text-align: center;
+    background: rgba(20, 10, 18, .88);
+    border: 1px solid rgba(255, 255, 255, .18);
+    border-radius: 16px;
+    box-shadow: 0 18px 60px rgba(0, 0, 0, .6);
+    color: rgba(255, 255, 255, .95);
+    font-size: 28px;
+    letter-spacing: 2px;
+    font-weight: 800;
+    z-index: 1000;
+}
+
+#info ul {
+    margin: 6px 0 0 18px;
+    padding: 0;
+}
+
+#info li {
+    margin: 4px 0;
+}
+
+#info a {
+    color: #7adfff;
+    text-decoration: none;
+    font-weight: 600;
 }

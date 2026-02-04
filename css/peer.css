@@ -1,26 +1,303 @@
+/*
+    Alexander Albers
+    usvan@student.kit.edu
+*/
+
+/* ---------- Theme ---------- */
+:root {
+    --bg0: #070910;
+    --bg1: #0a1223;
+
+    --card: rgba(255, 255, 255, .07);
+    --card2: rgba(0, 0, 0, .35);
+
+    --border: rgba(255, 255, 255, .14);
+    --text: rgba(255, 255, 255, .92);
+    --muted: rgba(255, 255, 255, .72);
+
+    --shadow: 0 16px 40px rgba(0, 0, 0, .55);
+    --radius: 18px;
+
+    --btn: rgba(255, 255, 255, .08);
+    --btn2: rgba(255, 255, 255, .12);
+    --btnBorder: rgba(255, 255, 255, .18);
+
+    --ok: rgba(0, 229, 255, .22);
+    --warn: rgba(255, 51, 102, .25);
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html,
 body {
-    font-family: sans-serif;
-    margin: 20px;
+    height: 100%;
+    margin: 0;
 }
 
-button {
-    font-size: 18px;
-    margin: 5px;
-    padding: 10px;
+body {
+    background: radial-gradient(900px 500px at 20% 10%, rgba(122, 92, 255, .20), transparent 55%), radial-gradient(900px 500px at 85% 25%, rgba(0, 229, 255, .16), transparent 60%), linear-gradient(160deg, var(--bg0), var(--bg1));
+    color: var(--text);
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
+    padding: 14px;
+    display: grid;
+    grid-template-rows: auto auto 1fr;
+    gap: 12px;
+    overscroll-behavior: none;
 }
 
-input {
-    font-size: 16px;
-    padding: 5px;
-    width: 200px;
+/* ---------- Icons ---------- */
+.icon {
+    display: block;
+    width: 26px;
+    height: 26px;
+    pointer-events: none;
+    user-select: none;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .45));
 }
 
-#controls {
+.icon--sys {
+    width: 26px;
+    height: 26px;
+}
+
+.icon--dpad {
+    width: 30px;
+    height: 30px;
+}
+
+.icon--drop {
+    width: 42px;
+    height: 42px;
+}
+
+/* ---------- Prevent zoom ---------- */
+.btn {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+}
+
+/* ---------- Header ---------- */
+.header-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.status-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, .35);
+}
+
+.brand-title {
+    font-weight: 900;
+    letter-spacing: .8px;
+    text-transform: uppercase;
+    font-size: 14px;
+}
+
+.brand-sub {
+    color: var(--muted);
+    font-size: 12px;
+}
+
+/* ---------- Status ---------- */
+.connection-status {
+    font-size: 12px;
+    padding: 8px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--btnBorder);
+}
+
+.status-on {
+    background: var(--ok);
+    color: var(--text);
+}
+
+.status-off {
+    background: rgba(0, 0, 0, .25);
+    color: var(--muted);
+}
+
+/* ---------- Card ---------- */
+.card {
+    padding: 12px 14px;
+    background: var(--card2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+}
+
+.hint {
+    color: var(--muted);
+    font-size: 13px;
+    margin: 0 0 10px;
+}
+
+.connect-row {
+    display: flex;
+    gap: 10px;
+}
+
+#peerid {
+    flex: 1;
+    padding: 12px;
+    border-radius: 14px;
+    border: 1px solid var(--btnBorder);
+    background: rgba(0, 0, 0, .25);
+    color: var(--text);
+}
+
+.tiny {
+    font-size: 12px;
+    color: var(--muted);
+}
+
+/* ---------- Buttons ---------- */
+.btn {
+    border: 1px solid var(--btnBorder);
+    background: linear-gradient(180deg, var(--btn2), var(--btn));
+    color: var(--text);
+    border-radius: 16px;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, .35);
+    font-weight: 900;
+    display: grid;
+    place-items: center;
+}
+
+.btn:active {
+    transform: translateY(1px) scale(.99);
+    filter: brightness(1.08);
+}
+
+.btn:active .icon {
+    transform: scale(.98);
+    filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .55));
+}
+
+.btn-primary {
+    padding: 12px 14px;
+    font-size: 14px;
+}
+
+/* ---------- Controller visibility ---------- */
+.controller {
     display: none;
-    margin-top: 10px;
 }
 
-#status {
-    margin-top: 10px;
-    font-weight: bold;
+body.is-connected #connectPanel {
+    display: none;
+}
+
+body.is-connected .controller {
+    display: block;
+}
+
+/* ---------- System bar ---------- */
+.system-bar {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.btn-system,
+.btn-warning {
+    width: 72px;
+    height: 52px;
+}
+
+.btn-warning {
+    background: linear-gradient(180deg, rgba(255, 51, 102, .32), rgba(255, 51, 102, .18));
+}
+
+/* ---------- Controls ---------- */
+.control-area {
+    display: grid;
+    grid-template-rows: auto auto;
+    gap: 14px;
+    justify-items: center;
+}
+
+/* ---------- Dpad ---------- */
+.dpad {
+    width: min(320px, 86vw);
+    aspect-ratio: 1/1;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    gap: 10px;
+}
+
+.dpad-center {
+    grid-column: 2;
+    grid-row: 2;
+    background: rgba(255, 255, 255, .05);
+    border-radius: 18px;
+}
+
+/* Dpad Buttons */
+.btn-dpad {
+    width: 100%;
+    height: 100%;
+    border-radius: 18px;
+}
+
+.up {
+    grid-column: 2;
+    grid-row: 1;
+}
+
+.left {
+    grid-column: 1;
+    grid-row: 2;
+}
+
+.right {
+    grid-column: 3;
+    grid-row: 2;
+}
+
+.down {
+    grid-column: 2;
+    grid-row: 3;
+}
+
+/* ---------- Drop ---------- */
+.action-area {
+    display: grid;
+    gap: 10px;
+    justify-items: center;
+}
+
+.btn-drop {
+    width: min(320px, 86vw);
+    height: 90px;
+    text-transform: uppercase;
+    background: linear-gradient(180deg, rgba(0, 229, 255, .22), rgba(0, 229, 255, .12));
+    border-color: rgba(0, 229, 255, .35);
+    display: grid;
+    place-items: center;
+}
+
+.btn-drop .label {
+    margin-top: 6px;
+    font-size: 12px;
+    letter-spacing: 1px;
+    opacity: .9;
 }
