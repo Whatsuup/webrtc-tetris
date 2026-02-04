@@ -1,30 +1,100 @@
 <!DOCTYPE html>
 <html lang="de">
-  <head>
-    <meta charset="utf-8">
-    <title>Tetris Controller</title>
-    <link rel="stylesheet" href="./css/peer.css">
-  </head>
-  <body>
-    <h2>Tetris Controller</h2>
-
-    <p>Peer-ID vom PC scannen oder eingeben:</p>
-    <input type="text" id="peerid" placeholder="Peer-ID">
-    <button id="connect">Verbinden</button>
-
-    <div id="status">Status: nicht verbunden</div>
-
-    <div id="controls">
-      <button data-cmd="left">⬅️ Links</button>
-      <button data-cmd="right">➡️ Rechts</button>
-      <button data-cmd="rotate">🔄 Drehen</button>
-      <button data-cmd="softDrop">⬇️ Drop</button>
-      <button data-cmd="hardDrop">⬇️⬇️ HardDrop</button>
+<head>
+  <!------------ Head ------------>
+  <meta charset="utf-8" />
+  <meta name="author" content="Alexander Albers (usvan@student.kit.edu)">
+  <meta name="description" content="WebRTC Tetris Game Controller">
+  <title>Tetris Controller</title>
+  <!-- Mobile friendly viewport:
+      - user-scalable=no prevents pinch zoom (useful for controller UIs)
+      - maximum-scale=1 reduces accidental zoom on double taps -->
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="./css/peer.css" />
+</head>
+<body class="is-disconnected">
+<!------------ Header & Status ------------>
+<header class="header-bar">
+  <div class="brand">
+    <!-- Status indicator -->
+    <span class="status-dot"></span>
+    <!-- Title -->
+    <div>
+      <div class="brand-title">Tetris Controller</div>
+      <div class="brand-sub">Controller</div>
     </div>
-
-    <div id="log"></div>
-
-    <script src="https://cdn.jsdelivr.net/npm/peerjs@1.4.7/dist/peerjs.min.js"></script>
-    <script src="./js/peer.js" type="module"></script>
-  </body>
+  </div>
+  <!-- Connection Status -->
+  <div id="status" class="connection-status status-off">
+    Nicht verbunden
+  </div>
+</header>
+<!------------ Connect panel (disconnected) ------------>
+<section id="connectPanel" class="card">
+  <p class="hint">
+    Peer-ID vom Host via QR-Code oder manuell eingeben:
+  </p>
+  <!-- Inputs -->
+  <div class="connect-row">
+    <input
+            type="text"
+            id="peerid"
+            placeholder="Peer-ID"
+            autocomplete="off"
+            inputmode="latin"
+    />
+    <button id="connect" class="btn btn-primary">
+      Verbinden
+    </button>
+  </div>
+  <p class="tiny">
+    Wenn du per QR-Code kommst, verbindet er automatisch.
+  </p>
+</section>
+<!------------ Controller UI ------------>
+<main id="controller" class="controller" aria-hidden="true">
+  <!------------ System actions ------------>
+  <section class="system-bar">
+    <button class="btn btn-system" data-cmd="pause">
+      <img src="./icons/pause.svg" class="icon" alt="" />
+    </button>
+    <button class="btn btn-system" data-cmd="resume">
+      <img src="./icons/play.svg" class="icon" alt="" />
+    </button>
+    <!-- Warning style: restart is destructive compared to pause/resume -->
+    <button class="btn btn-warning" data-cmd="restart">
+      <img src="./icons/restart.svg" class="icon" alt="" />
+    </button>
+  </section>
+  <!------------ Main controls ----------->
+  <section class="control-area">
+    <!------------ D-Pad ------------>
+    <div class="dpad">
+      <button class="btn btn-dpad up" data-cmd="rotate">
+        <img src="./icons/rotate.svg" class="icon" alt="" />
+      </button>
+      <button class="btn btn-dpad left" data-cmd="left">
+        <img src="./icons/left.svg" class="icon" alt="" />
+      </button>
+      <button class="btn btn-dpad right" data-cmd="right">
+        <img src="./icons/right.svg" class="icon" alt="" />
+      </button>
+      <button class="btn btn-dpad down" data-cmd="softDrop">
+        <img src="./icons/down.svg" class="icon" alt="" />
+      </button>
+      <div class="dpad-center"></div>
+    </div>
+    <!------------ hard drop ------------>
+    <div class="action-area">
+      <button class="btn btn-drop" data-cmd="hardDrop">
+        DROP
+      </button>
+    </div>
+  </section>
+</main>
+<!------------ Javascript ------------>
+<script src="./js/peer.js" type="module"></script>
+</body>
 </html>

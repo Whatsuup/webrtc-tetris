@@ -1,23 +1,41 @@
 <!DOCTYPE html>
 <html lang="de">
-    <head>
-        <meta charset="utf-8" />
-        <title>Tetris + PeerJS</title>
-        <link rel="stylesheet" href="./css/host.css">
-    </head>
-    <body>
-        <h2>Tetris (PC) – PeerJS + QR-Code</h2>
-        <canvas id="game" width="240" height="480"></canvas>
-        <div class="hud">
-            Score: <span id="score">0</span> |
-            Level: <span id="level">0</span> |
-            Lines: <span id="lines">0</span>
-        </div>
-        <div id="qrcode"></div>
-        <div id="log"></div>
-
-        <script src="https://cdn.jsdelivr.net/npm/peerjs@1.4.7/dist/peerjs.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
-        <script src="./js/host.js" type="module"></script>
-    </body>
+<head>
+    <!------------ Head ------------>
+    <meta charset="utf-8" />
+    <meta name="author" content="Alexander Albers (usvan@student.kit.edu)">
+    <meta name="description" content="WebRTC Tetris Game Host">
+    <title>Remote Controlled Tetris</title>
+    <!-- Stylesheet -->
+    <link rel="stylesheet" href="./css/host.css" />
+</head>
+<body>
+<!------------ Title ------------>
+<h2 class="title">Remote Controlled Tetris</h2>
+<!------------ Game canvas ------------>
+<!-- Also hidden until connected -->
+<canvas id="game" width="240" height="480"></canvas>
+<!------------ HUD ------------>
+<!-- Also hidden until connected -->
+<div class="hud">
+    <div class="row">Score: <span id="score">0</span></div>
+    <div class="row">Level: <span id="level">0</span></div>
+    <div class="row">Lines: <span id="lines">0</span></div>
+</div>
+<!------------ Connect screen ------------>
+<div id="qrcode"></div>
+<!-- Connection info -->
+<div id="info">
+    <span id="qr_info">Scanne den QR-Code um das Spiel zu starten.</span><br />
+    <span id="alt_info">
+				Alternativ kannst du auch
+				<ul>
+					<li><a id="link" target="_blank"></a> aufrufen</li>
+					<li>Peer-ID <a id="peer_id"></a> manuell eingeben.</li>
+				</ul>
+			</span>
+</div>
+<!------------ Javascript ------------>
+<script src="./js/host.js" type="module"></script>
+</body>
 </html>
