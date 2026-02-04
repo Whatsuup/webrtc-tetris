@@ -30,7 +30,13 @@ peer.on('open', id => {
         img.src = url;
         document.getElementById('qrcode').appendChild(img);
     });
-    let url = "http://" + domain + ":" + window.location.port + path;
+    let url;
+    if (window.location.port === null) {
+        url = "https://" + domain + path;
+    } else {
+        // Only if run locally
+        url = "http://" + domain + ":" + window.location.port + path;
+    }
     document.getElementById('link').href = url + param + id;
     document.getElementById('link').textContent = url;
     document.getElementById('peer_id').textContent = peer.id;
